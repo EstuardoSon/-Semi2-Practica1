@@ -2,7 +2,7 @@ import pyodbc
 
 def conexion():
     try:
-        conexion = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=DESKTOP-3F7VQTP\SQLEXPRESS;UID=sa;PWD=Es2009000458;',autocommit=True)
+        conexion = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=DESKTOP-3F7VQTP\SQLEXPRESS;DATABASE=practica1_semi2;UID=sa;PWD=Es2009000458;')
         print('Conexion exitosa')
         return conexion
     except Exception as e:
