@@ -1,4 +1,5 @@
 import conexion
+import csv
 
 conexion = conexion.conexion()
 
@@ -22,8 +23,8 @@ def crear_modelo():
     
     try:
         cursor = conexion.cursor()
-        cursor.execute("CREATE TABLE dates (id INT IDENTITY(1,1), year INT, month INT, day INT, hour int, minute INT, second float, PRIMARY KEY (id))")
-        cursor.execute("CREATE TABLE places (id INT IDENTITY(1,1), country VARCHAR(50), location VARCHAR(50), PRIMARY KEY (id))")
+        cursor.execute("CREATE TABLE dates (id INT IDENTITY(1,1), year INT, PRIMARY KEY (id))")
+        cursor.execute("CREATE TABLE places (id INT IDENTITY(1,1), country VARCHAR(50), PRIMARY KEY (id))")
         cursor.execute('''CREATE TABLE tsunami (TEV INT, TCC INT, EM FLOAT, Deposits INT, Latitude FLOAT, Longitude FLOAT, MWH FLOAT, NR INT, TM FLOAT, TI FLOAT, TD INT, TMIS INT, TMD INT, TINJ INT, TDMil FLOAT, TDD FLOAT, THD INT, THDA INT, id_date INT, id_place INT, FOREIGN KEY (id_date) REFERENCES dates(id), FOREIGN KEY (id_place) REFERENCES places(id))''')
         query = '''CREATE TABLE tempTsunami (
             year varchar(4), 
@@ -66,13 +67,13 @@ def extraer_informacion():
     print("Extrayendo información...")
     
     with open(path, "r") as file:
-        lines = file.readlines()
-        for line in lines[1:]:
+        lines = csv.reader(file)
+        header = next(lines)
+        for line in lines:
             try:
-                data = line.split(",")
                 query = "INSERT INTO tempTsunami VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
                 cursor = conexion.cursor()
-                cursor.execute(query,data)
+                cursor.execute(query,line)
                 cursor.commit()
                 cursor.close()
             except Exception as e:
@@ -85,25 +86,19 @@ def cargar_informacion():
     
     try:
         cursor = conexion.cursor()
-        cursor.execute('''INSERT INTO dates(year,month,day,hour,minute,second) SELECT DISTINCT cast(t.year as int), cast(t.month as int), cast(t.day as int), cast(t.hour as int), cast(t.minute as int), cast(t.second as float) 
+        cursor.execute('''INSERT INTO dates(year) SELECT DISTINCT cast(t.year as int)
                        FROM tempTsunami as t
-                       WHERE (t.year IS NOT NULL AND t.year != '') AND 
-                       (t.month IS NOT NULL AND t.month != '') AND
-                       (t.day IS NOT NULL AND t.day != '') AND
-                       (t.hour IS NOT NULL AND t.hour != '') AND
-                       (t.minute IS NOT NULL AND t.minute != '') AND
-                       (t.second IS NOT NULL AND t.second != '')''')
+                       WHERE (t.year IS NOT NULL AND t.year != '') ''')
         
-        cursor.execute('''INSERT INTO places(country,location) SELECT DISTINCT t.country, t.location
+        cursor.execute('''INSERT INTO places(country) SELECT DISTINCT t.country
                         FROM tempTsunami as t
-                        WHERE (t.country IS NOT NULL AND t.country != '') AND
-                        (t.location IS NOT NULL AND t.location != '')''')
+                        WHERE (t.country IS NOT NULL AND t.country != '')''')
         
         cursor.execute('''INSERT INTO tsunami(TEV, TCC, EM, Deposits, Latitude, Longitude, MWH, NR, TM, TI, TD, TMIS, TMD, TINJ, TDMil, TDD, THD, THDA, id_date, id_place)
                         SELECT cast(t.TEV as int), cast(t.TCC as int), cast(t.EM as float), cast(t.Deposits as int), cast(t.Latitude as float), cast(t.Longitude as float), cast(t.MWH as float), cast(t.NR as int), cast(t.TM as float), cast(t.TI as float), cast(t.TD as int), cast(t.TMIS as int), cast(t.TMD as int), cast(t.TINJ as int), cast(t.TDMil as float), cast(t.TDD as int), cast(t.THD as int), cast(t.THDA as int), d.id, p.id
                         FROM tempTsunami as t
-                        JOIN dates as d ON cast(t.year as int) = d.year AND cast(t.month as int) = d.month AND cast(t.day as int) = d.day AND cast(t.hour as int) = d.hour AND cast(t.minute as int) = d.minute AND cast(t.second as float) = d.second
-                        JOIN places as p ON t.country = p.country AND t.location = p.location''')
+                        JOIN dates as d ON cast(t.year as int) = d.year 
+                        JOIN places as p ON t.country = p.country''')
         cursor.commit()
         cursor.close()
         
@@ -115,6 +110,9 @@ def consulta1():
     buffer = "Consulta 1\n"
     try:
         cursor = conexion.cursor()
+        cursor.execute("SELECT count(*) FROM tempTsunami")
+        rows = cursor.fetchall()
+        buffer += f"No. tempTsunami: {rows[0][0]} \n"
         cursor.execute("SELECT count(*) FROM tsunami")
         rows = cursor.fetchall()
         buffer += f"No. tsunamis: {rows[0][0]} \n"
@@ -140,7 +138,7 @@ def consultaDual(query, i):
         cursor.close()
         return buffer
     except Exception as e:
-        return "Error al realizar la consulta {i} \n"
+        return f"Error al realizar la consulta {i} \n"
 
 def consulta3():
     buffer = ""
@@ -169,30 +167,58 @@ def consulta3():
         print("Error al realizar la consulta 3 \n")
 
 def realizar_consultas():
+    print("Seleccione una opción:")
+    print("1. Count de Tablas")
+    print("2. Tsunamis por año")
+    print("3. Tsunamis por pais")
+    print("4. Promedio de daño por pais")
+    print("5. Top 5 paises con mas muertes")
+    print("6. Top 5 años con mas muertes")
+    print("7. Top 5 años con mas tsunamis")
+    print("8. Top 5 paises con mayor numero de casas destruidas")
+    print("9. Top 5 paises con mayor numero de casas dañadas")
+    print("10. Promedio de altura de olas por pais")
+    
+    opcion = input("Opción: ")
+    
     print("Realizando consultas...")
-    buffer = consulta1() + "\n"
-    buffer += consultaDual('''SELECT country, count(*) as no_tsunamis FROM places 
-                       JOIN tsunami ON places.id = tsunami.id_place 
-                       GROUP BY country''',2) + "\n"
-    buffer += consultaDual('''SELECT country, sum(TDMil) as total_damage FROM places 
+    buffer = ""
+    
+    if opcion == "3":
+        consulta3()
+        return
+    elif opcion == "1":
+        buffer = consulta1() + "\n"
+    elif opcion == "2":
+        buffer = consultaDual('''SELECT year, count(*) as no_tsunamis FROM dates 
+                       JOIN tsunami ON dates.id = tsunami.id_date 
+                       GROUP BY year ORDER BY year ASC''',2) + "\n"
+    elif opcion == "4":
+        buffer = consultaDual('''SELECT country, avg(TDMil) as total_damage FROM places 
                        JOIN tsunami ON places.id = tsunami.id_place 
                        GROUP BY country''',4) + "\n"
-    buffer += consultaDual('''SELECT TOP 5 country, sum(TD) as total_Deaths FROM places 
+    elif opcion == "5":
+        buffer = consultaDual('''SELECT TOP 5 country, sum(TD) as total_Deaths FROM places 
                        JOIN tsunami ON places.id = tsunami.id_place 
                        GROUP BY country ORDER BY total_Deaths DESC''',5) + "\n"
-    buffer += consultaDual('''SELECT TOP 5 year, sum(TD) as total_Deaths FROM tsunami
+    elif opcion == "6":
+        buffer = consultaDual('''SELECT TOP 5 year, sum(TD) as total_Deaths FROM tsunami
                        JOIN dates ON dates.id = tsunami.id_date 
                        GROUP BY year ORDER BY total_Deaths DESC''',6) + "\n"
-    buffer += consultaDual('''SELECT TOP 5 year, count(*) as total_Tsunami FROM tsunami
+    elif opcion == "7":
+        buffer = consultaDual('''SELECT TOP 5 year, count(*) as total_Tsunami FROM tsunami
                        JOIN dates ON dates.id = tsunami.id_date 
                        GROUP BY year ORDER BY total_Tsunami DESC''',7) + "\n"
-    buffer += consultaDual('''SELECT TOP 5 country, sum(THD) as total_THD FROM tsunami
+    elif opcion == "8":
+        buffer = consultaDual('''SELECT TOP 5 country, sum(THD) as total_THD FROM tsunami
                        JOIN places ON places.id = tsunami.id_place 
                        GROUP BY country ORDER BY total_THD DESC''',8) + "\n"
-    buffer += consultaDual('''SELECT TOP 5 country, sum(THDA) as total_THDA FROM tsunami
+    elif opcion == "9":
+        buffer = consultaDual('''SELECT TOP 5 country, sum(THDA) as total_THDA FROM tsunami
                        JOIN places ON places.id = tsunami.id_place 
                        GROUP BY country ORDER BY total_THDA DESC''',9) + "\n"
-    buffer += consultaDual('''SELECT country, avg(MWH) as max_water FROM tsunami
+    elif opcion == "10": 
+        buffer = consultaDual('''SELECT country, avg(MWH) as max_water FROM tsunami
                        JOIN places ON places.id = tsunami.id_place 
                        GROUP BY country''',10) + "\n"
     
