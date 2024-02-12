@@ -1,5 +1,6 @@
 import conexion
 import csv
+from tabulate import tabulate
 
 conexion = conexion.conexion()
 
@@ -107,38 +108,37 @@ def cargar_informacion():
         print("Error al cargar la información",e)
 
 def consulta1():
-    buffer = "Consulta 1\n"
     try:
         cursor = conexion.cursor()
-        cursor.execute("SELECT count(*) FROM tempTsunami")
-        rows = cursor.fetchall()
-        buffer += f"No. tempTsunami: {rows[0][0]} \n"
-        cursor.execute("SELECT count(*) FROM tsunami")
-        rows = cursor.fetchall()
-        buffer += f"No. tsunamis: {rows[0][0]} \n"
-        cursor.execute("SELECT count(*) FROM dates")
-        rows = cursor.fetchall()
-        buffer += f"No. dates: {rows[0][0]}\n"
-        cursor.execute("SELECT count(*) FROM places")
-        rows = cursor.fetchall()
-        buffer += f"No. places: {rows[0][0]}\n"
+        cursor.execute("SELECT count(*) as 'tempTsunami' FROM tempTsunami")
+        dataTemp = ([i[0] for i in cursor.description][0],cursor.fetchall()[0][0])
+        cursor.execute("SELECT count(*) as 'tsunami' FROM tsunami")
+        dataTsunami = ([i[0] for i in cursor.description][0],cursor.fetchall()[0][0])
+        cursor.execute("SELECT count(*) as 'dates' FROM dates")
+        dataDates = ([i[0] for i in cursor.description][0],cursor.fetchall()[0][0])
+        cursor.execute("SELECT count(*) as 'places' FROM places")
+        dataPlaces = ([i[0] for i in cursor.description][0],cursor.fetchall()[0][0])
         cursor.close()
-        return buffer
+        
+        file = open("Consultas/consulta1.txt", "w")
+        file.write(tabulate((dataTemp,dataDates,dataPlaces,dataTsunami), ["Tabla","Cantidad"]))
+        
     except Exception as e:
-        return "Error al realizar la consulta  \n"
+        print("Error al realizar la consulta  1\n")
 
 def consultaDual(query, i):
-    buffer = f"Consulta {i}\n"
     try:
         cursor = conexion.cursor()
         cursor.execute(query)
+        header = [i[0] for i in cursor.description]
         rows = cursor.fetchall()
-        for row in rows:
-            buffer += f"{row[0]}: {row[1]}\n"
         cursor.close()
-        return buffer
+        file = open(f"Consultas/consulta{i}.txt", "w")
+        file.write(tabulate(rows, header))
+        file.close()
+        
     except Exception as e:
-        return f"Error al realizar la consulta {i} \n"
+        print(f"Error al realizar la consulta {i} \n")
 
 def consulta3():
     buffer = ""
@@ -160,7 +160,7 @@ def consulta3():
             buffer += f"\n{bufferYears}\n"
             
         cursor.close()
-        f = open("consulta3.csv", "w")
+        f = open("Consultas/consulta3.csv", "w")
         f.write(buffer)
         f.close()
     except Exception as e:
@@ -182,51 +182,43 @@ def realizar_consultas():
     opcion = input("Opción: ")
     
     print("Realizando consultas...")
-    buffer = ""
-    
-    if opcion == "3":
-        consulta3()
-        return
-    elif opcion == "1":
-        buffer = consulta1() + "\n"
+
+    if opcion == "1":
+        consulta1()
     elif opcion == "2":
-        buffer = consultaDual('''SELECT year, count(*) as no_tsunamis FROM dates 
+        consultaDual('''SELECT year, count(*) as no_tsunamis FROM dates 
                        JOIN tsunami ON dates.id = tsunami.id_date 
-                       GROUP BY year ORDER BY year ASC''',2) + "\n"
+                       GROUP BY year ORDER BY year ASC''',2)
+    elif opcion == "3":
+        consulta3()
     elif opcion == "4":
-        buffer = consultaDual('''SELECT country, avg(TDMil) as total_damage FROM places 
+        consultaDual('''SELECT country, avg(TDMil) as total_damage FROM places 
                        JOIN tsunami ON places.id = tsunami.id_place 
-                       GROUP BY country''',4) + "\n"
+                       GROUP BY country''',4)
     elif opcion == "5":
-        buffer = consultaDual('''SELECT TOP 5 country, sum(TD) as total_Deaths FROM places 
+        consultaDual('''SELECT TOP 5 country, sum(TD) as total_Deaths FROM places 
                        JOIN tsunami ON places.id = tsunami.id_place 
-                       GROUP BY country ORDER BY total_Deaths DESC''',5) + "\n"
+                       GROUP BY country ORDER BY total_Deaths DESC''',5)
     elif opcion == "6":
-        buffer = consultaDual('''SELECT TOP 5 year, sum(TD) as total_Deaths FROM tsunami
+        consultaDual('''SELECT TOP 5 year, sum(TD) as total_Deaths FROM tsunami
                        JOIN dates ON dates.id = tsunami.id_date 
-                       GROUP BY year ORDER BY total_Deaths DESC''',6) + "\n"
+                       GROUP BY year ORDER BY total_Deaths DESC''',6)
     elif opcion == "7":
-        buffer = consultaDual('''SELECT TOP 5 year, count(*) as total_Tsunami FROM tsunami
+        consultaDual('''SELECT TOP 5 year, count(*) as total_Tsunami FROM tsunami
                        JOIN dates ON dates.id = tsunami.id_date 
-                       GROUP BY year ORDER BY total_Tsunami DESC''',7) + "\n"
+                       GROUP BY year ORDER BY total_Tsunami DESC''',7)
     elif opcion == "8":
-        buffer = consultaDual('''SELECT TOP 5 country, sum(THD) as total_THD FROM tsunami
+        consultaDual('''SELECT TOP 5 country, sum(THD) as total_THD FROM tsunami
                        JOIN places ON places.id = tsunami.id_place 
-                       GROUP BY country ORDER BY total_THD DESC''',8) + "\n"
+                       GROUP BY country ORDER BY total_THD DESC''',8)
     elif opcion == "9":
-        buffer = consultaDual('''SELECT TOP 5 country, sum(THDA) as total_THDA FROM tsunami
+        consultaDual('''SELECT TOP 5 country, sum(THDA) as total_THDA FROM tsunami
                        JOIN places ON places.id = tsunami.id_place 
-                       GROUP BY country ORDER BY total_THDA DESC''',9) + "\n"
+                       GROUP BY country ORDER BY total_THDA DESC''',9)
     elif opcion == "10": 
-        buffer = consultaDual('''SELECT country, avg(MWH) as max_water FROM tsunami
+        consultaDual('''SELECT country, avg(MWH) as max_water FROM tsunami
                        JOIN places ON places.id = tsunami.id_place 
-                       GROUP BY country''',10) + "\n"
-    
-    f = open("consultas.txt", "w")
-    f.write(buffer)
-    f.close()
-    
-    consulta3()
+                       GROUP BY country''',10)
 
 def menu():
     print("Seleccione una opción:")
