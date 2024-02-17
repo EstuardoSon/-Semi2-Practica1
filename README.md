@@ -195,7 +195,63 @@ def cargar_informacion():
 En esta funcion se cargan los datos de la tabla temporal tempTsunami a las tablas de la base de datos. Se cargan las fechas, los lugares y los datos de los tsunamis.
 
 ## Realizar Consultas
-### Menu
+```Python
+def realizar_consultas():
+    print("Seleccione una opción:")
+    print("1. Count de Tablas")
+    print("2. Tsunamis por año")
+    print("3. Tsunamis por pais")
+    print("4. Promedio de daño por pais")
+    print("5. Top 5 paises con mas muertes")
+    print("6. Top 5 años con mas muertes")
+    print("7. Top 5 años con mas tsunamis")
+    print("8. Top 5 paises con mayor numero de casas destruidas")
+    print("9. Top 5 paises con mayor numero de casas dañadas")
+    print("10. Promedio de altura de olas por pais")
+    
+    opcion = input("Opción: ")
+    
+    print("Realizando consultas...")
+
+    if opcion == "1":
+        consulta1()
+    elif opcion == "2":
+        consultaDual('''SELECT year, count(*) as no_tsunamis FROM dates 
+                       JOIN tsunami ON dates.id = tsunami.id_date 
+                       GROUP BY year ORDER BY year ASC''',2)
+    elif opcion == "3":
+        consulta3()
+    elif opcion == "4":
+        consultaDual('''SELECT country, avg(TDMil) as total_damage FROM places 
+                       JOIN tsunami ON places.id = tsunami.id_place 
+                       WHERE TDMil > 0 GROUP BY country''',4)
+    elif opcion == "5":
+        consultaDual('''SELECT TOP 5 country, sum(TD) as total_Deaths FROM places 
+                       JOIN tsunami ON places.id = tsunami.id_place 
+                       GROUP BY country ORDER BY total_Deaths DESC''',5)
+    elif opcion == "6":
+        consultaDual('''SELECT TOP 5 year, sum(TD) as total_Deaths FROM tsunami
+                       JOIN dates ON dates.id = tsunami.id_date 
+                       GROUP BY year ORDER BY total_Deaths DESC''',6)
+    elif opcion == "7":
+        consultaDual('''SELECT TOP 5 year, count(*) as total_Tsunami FROM tsunami
+                       JOIN dates ON dates.id = tsunami.id_date 
+                       GROUP BY year ORDER BY total_Tsunami DESC''',7)
+    elif opcion == "8":
+        consultaDual('''SELECT TOP 5 country, sum(THD) as total_THD FROM tsunami
+                       JOIN places ON places.id = tsunami.id_place 
+                       GROUP BY country ORDER BY total_THD DESC''',8)
+    elif opcion == "9":
+        consultaDual('''SELECT TOP 5 country, sum(THDA) as total_THDA FROM tsunami
+                       JOIN places ON places.id = tsunami.id_place 
+                       GROUP BY country ORDER BY total_THDA DESC''',9)
+    elif opcion == "10": 
+        consultaDual('''SELECT country, avg(MWH) as max_water FROM tsunami
+                       JOIN places ON places.id = tsunami.id_place 
+                       WHERE MWH > 0 GROUP BY country''',10)
+```
+
+## Menu
 ```Python
 def realizar_consultas():
     print("Seleccione una opción:")
@@ -264,44 +320,43 @@ En esta funcion se muestra un menu con las opciones de consulta. Se ejecuta la c
 ### Consulta 1
 ```Python
 def consulta1():
-    buffer = "Consulta 1\n"
     try:
         cursor = conexion.cursor()
-        cursor.execute("SELECT count(*) FROM tempTsunami")
-        rows = cursor.fetchall()
-        buffer += f"No. tempTsunami: {rows[0][0]} \n"
-        cursor.execute("SELECT count(*) FROM tsunami")
-        rows = cursor.fetchall()
-        buffer += f"No. tsunamis: {rows[0][0]} \n"
-        cursor.execute("SELECT count(*) FROM dates")
-        rows = cursor.fetchall()
-        buffer += f"No. dates: {rows[0][0]}\n"
-        cursor.execute("SELECT count(*) FROM places")
-        rows = cursor.fetchall()
-        buffer += f"No. places: {rows[0][0]}\n"
+        cursor.execute("SELECT count(*) as 'tempTsunami' FROM tempTsunami")
+        dataTemp = ([i[0] for i in cursor.description][0],cursor.fetchall()[0][0])
+        cursor.execute("SELECT count(*) as 'tsunami' FROM tsunami")
+        dataTsunami = ([i[0] for i in cursor.description][0],cursor.fetchall()[0][0])
+        cursor.execute("SELECT count(*) as 'dates' FROM dates")
+        dataDates = ([i[0] for i in cursor.description][0],cursor.fetchall()[0][0])
+        cursor.execute("SELECT count(*) as 'places' FROM places")
+        dataPlaces = ([i[0] for i in cursor.description][0],cursor.fetchall()[0][0])
         cursor.close()
-        return buffer
+        
+        file = open("Consultas/consulta1.txt", "w")
+        file.write(tabulate((dataTemp,dataDates,dataPlaces,dataTsunami), ["Tabla","Cantidad"]))
+        
     except Exception as e:
-        return "Error al realizar la consulta  \n"
+        print("Error al realizar la consulta  1\n")
 ```
 En esta funcion se realiza la consulta 1 que consiste en contar el numero de registros de las tablas tempTsunami, tsunami, dates y places.
 
 ### ConsultaDual
 ```Python
 def consultaDual(query, i):
-    buffer = f"Consulta {i}\n"
     try:
         cursor = conexion.cursor()
         cursor.execute(query)
+        header = [i[0] for i in cursor.description]
         rows = cursor.fetchall()
-        for row in rows:
-            buffer += f"{row[0]}: {row[1]}\n"
         cursor.close()
-        return buffer
+        file = open(f"Consultas/consulta{i}.txt", "w")
+        file.write(tabulate(rows, header))
+        file.close()
+        
     except Exception as e:
-        return f"Error al realizar la consulta {i} \n"
+        print(f"Error al realizar la consulta {i} \n")
 ```
-En esta funcion se realiza una consulta que devuelve dos columnas. Se ejecuta la consulta y se guardan los resultados en un buffer.
+En esta funcion se realiza una consulta que devuelve dos columnas. Se ejecuta la consulta y se guardan los resultados en un buffer. Resive como parametros la consulta y el numero de la consulta.
 
 ### Consulta 3
 ```Python
@@ -325,7 +380,7 @@ def consulta3():
             buffer += f"\n{bufferYears}\n"
             
         cursor.close()
-        f = open("consulta3.csv", "w")
+        f = open("Consultas/consulta3.csv", "w")
         f.write(buffer)
         f.close()
     except Exception as e:

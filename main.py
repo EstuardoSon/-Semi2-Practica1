@@ -194,7 +194,7 @@ def realizar_consultas():
     elif opcion == "4":
         consultaDual('''SELECT country, avg(TDMil) as total_damage FROM places 
                        JOIN tsunami ON places.id = tsunami.id_place 
-                       GROUP BY country''',4)
+                       WHERE TDMil > 0 GROUP BY country''',4)
     elif opcion == "5":
         consultaDual('''SELECT TOP 5 country, sum(TD) as total_Deaths FROM places 
                        JOIN tsunami ON places.id = tsunami.id_place 
@@ -218,7 +218,7 @@ def realizar_consultas():
     elif opcion == "10": 
         consultaDual('''SELECT country, avg(MWH) as max_water FROM tsunami
                        JOIN places ON places.id = tsunami.id_place 
-                       GROUP BY country''',10)
+                       WHERE MWH > 0 GROUP BY country''',10)
 
 def menu():
     print("Seleccione una opción:")
